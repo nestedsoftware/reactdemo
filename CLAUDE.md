@@ -1,0 +1,1 @@
+C:/Users/vladl/softwaredevelopment/reactdemo/.github/copilot-instructions.md
