@@ -24,7 +24,7 @@ See `LEARNING_PLAN.md` for the planned sequence of libraries to add.
 - `tailwind-merge` — reliable class overrides in `Button` component via `twMerge`
 
 - `cn()` helper in `src/lib/cn.ts` — combines `clsx` + `tailwind-merge`; used everywhere instead of either library directly
-- React Context (`src/context/QuizContext.tsx`) — shared completed state that survives navigation; `QuizProvider` in `App.tsx`, `useQuizContext` in consuming components
+- React Context (`src/context/QuizContext.tsx`) — shared completed state that survives navigation; `QuizProvider` in `App.tsx`, `useQuizContext` in consuming components; `searchQuery` added to demonstrate re-render problem; `Layout` has a `console.log` to make unnecessary re-renders visible
 
 **Next step:** Round 2 — Zustand (replace React Context with global state store)
 

@@ -831,3 +831,52 @@ For low-frequency, low-complexity state this is acceptable. For anything larger 
 frequently updated, this becomes a performance problem. This is one of the key problems
 Zustand solves — it allows components to subscribe to only the specific slice of state
 they need, so unrelated updates don't trigger unnecessary re-renders.
+
+---
+
+## Step 15 — Demonstrating the React Context re-render problem
+
+To make the limitation visible, we added a `searchQuery` to `QuizContext` and a
+`console.log` to `Layout` to observe unnecessary re-renders.
+
+### Files modified
+
+#### `src/context/QuizContext.tsx` — added `searchQuery`
+```tsx
+type QuizContextType = {
+  completedIds: string[]
+  toggleCompleted: (id: string) => void
+  searchQuery: string
+  setSearchQuery: (query: string) => void
+}
+
+// inside QuizProvider:
+const [searchQuery, setSearchQuery] = useState('')
+```
+
+#### `src/pages/QuizListPage.tsx` — added search input
+```tsx
+const { searchQuery, setSearchQuery } = useQuizContext()
+
+<input
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  placeholder="Search quizzes..."
+/>
+```
+
+#### `src/components/Layout.tsx` — added console.log to observe re-renders
+```tsx
+const { completedIds } = useQuizContext()
+console.log('Layout rendered', completedIds)
+```
+
+### What we observed
+Typing in the search box triggers `console.log` in `Layout` on every keystroke —
+even though `Layout` only uses `completedIds` and not `searchQuery`. Both are in the
+same context object, so any update to either value re-renders all consumers.
+
+Note: two log messages appear per keystroke because React `StrictMode` intentionally
+double-renders components in development to surface bugs. The doubling is expected.
+
+This is the problem Zustand solves next.

@@ -4,10 +4,18 @@ import Button from '../components/Button'
 
 import { quizzes } from '../data/quizzes'
 
+import { useQuizContext } from '../context/QuizContext'
+
 function QuizListPage() {
+  const { searchQuery, setSearchQuery } = useQuizContext()
   return (
     <div>
       <h1>Quizzes</h1>
+      <input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search quizzes..."
+      />
       <ul>
         {quizzes.map((quiz) => (
           <li
