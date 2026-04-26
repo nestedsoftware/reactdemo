@@ -881,6 +881,25 @@ double-renders components in development to surface bugs. The doubling is expect
 
 This is the problem Zustand solves next.
 
+### Can memoization fix the React Context re-render problem?
+Yes, but at the cost of significant complexity. Two common approaches:
+
+**1. Split into multiple contexts** — one per concern:
+```tsx
+const CompletedContext = createContext(...)
+const SearchContext = createContext(...)
+```
+Components consuming `CompletedContext` won't re-render when `SearchContext` changes.
+But you now need a separate provider for each, and components must import from multiple
+contexts. Gets unwieldy as the app grows.
+
+**2. `useMemo` to stabilize values** — memoize the context value so it only changes
+when specific dependencies change. Complex to set up correctly and easy to get wrong.
+
+The deeper issue is that context was designed for infrequently changing values like
+themes or auth — not for application state that updates frequently. Zustand was
+purpose-built for that problem, which is why it's the cleaner solution.
+
 ---
 
 ## Step 16 — Replace React Context with Zustand
