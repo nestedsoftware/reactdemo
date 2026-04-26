@@ -697,3 +697,137 @@ export function cn(...inputs: ClassValue[]) {
 
 The overhead is negligible. The benefit is a single import and a consistent answer
 to "which utility do I use here?" — always `cn()`, never a judgment call.
+
+### When NOT to use `cn()`
+- **Plain static string, no `className` prop** → skip `cn()`, it adds nothing
+- **Reusable component accepting a `className` prop** → always use `cn()`
+- **Needs conditional classes** → use `cn()` for the `clsx` behaviour
+
+---
+
+## Step 13 — Local state with useState (before React Context)
+
+To motivate global state, we first added a "mark as completed" toggle using local
+component state.
+
+### File modified
+
+#### `src/pages/QuizDetailPage.tsx`
+```tsx
+import { useState } from 'react'
+
+const [completed, setCompleted] = useState(false)
+
+<button onClick={() => setCompleted(!completed)}>
+  {completed ? '✓ Completed' : 'Mark as completed'}
+</button>
+```
+
+### The problem
+`useState` is **local** — the state lives inside the component instance. When React
+Router navigates away from `QuizDetailPage`, the component is fully **unmounted** and
+its state is destroyed. Navigating back mounts a fresh instance with `completed: false`.
+
+React Router swaps components in and out via `<Outlet />` — it does not hide them with
+CSS. There is no existing instance to return to.
+
+---
+
+## Step 14 — Shared state with React Context
+
+To fix the state loss problem, we lifted the completed state into a React context whose
+provider lives in `App.tsx` — which never unmounts.
+
+### Key distinction
+- **`QuizProvider`** — a component placed once in `App.tsx` that *owns* the state
+- **`useQuizContext`** — a hook any component calls to *read or update* that state
+
+### File added
+
+#### `src/context/QuizContext.tsx`
+```tsx
+import { createContext, useContext, useState } from 'react'
+
+type QuizContextType = {
+  completedIds: string[]
+  toggleCompleted: (id: string) => void
+}
+
+const QuizContext = createContext<QuizContextType | null>(null)
+```
+
+`createContext<QuizContextType | null>(null)` — the `| null` union means the context
+value is `null` until a provider is mounted. The `null` default catches the mistake of
+using the context outside its provider.
+
+```tsx
+export function QuizProvider({ children }: { children: React.ReactNode }) {
+  const [completedIds, setCompletedIds] = useState<string[]>([])
+
+  function toggleCompleted(id: string) {
+    setCompletedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  return (
+    <QuizContext.Provider value={{ completedIds, toggleCompleted }}>
+      {children}
+    </QuizContext.Provider>
+  )
+}
+```
+
+`setCompletedIds((prev) => ...)` — the functional update form is used because the new
+state depends on the previous state. This is the safe pattern to avoid stale state.
+
+```tsx
+export function useQuizContext() {
+  const ctx = useContext(QuizContext)
+  if (!ctx) throw new Error('useQuizContext must be used within a QuizProvider')
+  return ctx
+}
+```
+
+The null check throws a clear error if the hook is called outside `<QuizProvider>`.
+
+### Files modified
+
+#### `src/App.tsx` — wrapped app in provider
+```tsx
+import { QuizProvider } from './context/QuizContext'
+
+<QuizProvider>
+  <BrowserRouter>...</BrowserRouter>
+</QuizProvider>
+```
+
+#### `src/pages/QuizDetailPage.tsx` — reads from context instead of local state
+```tsx
+import { useQuizContext } from '../context/QuizContext'
+
+const { completedIds, toggleCompleted } = useQuizContext()
+const completed = completedIds.includes(id!)
+
+<button onClick={() => toggleCompleted(id!)}>
+  {completed ? '✓ Completed' : 'Mark as completed'}
+</button>
+```
+
+### Result
+Completed state now survives navigation — `QuizProvider` stays mounted in `App.tsx`
+while page components mount and unmount freely beneath it.
+
+### Limitation of React Context
+React context is not optimised for frequent updates. When any value in the context
+changes, **every component that consumes that context re-renders**, even if the specific
+value it cares about didn't change.
+
+For example, if `QuizContext` held both `completedIds` and an unrelated `searchQuery`,
+updating `searchQuery` would re-render every component that calls `useQuizContext()` —
+including those that only care about `completedIds`.
+
+For low-frequency, low-complexity state this is acceptable. For anything larger or more
+frequently updated, this becomes a performance problem. This is one of the key problems
+Zustand solves — it allows components to subscribe to only the specific slice of state
+they need, so unrelated updates don't trigger unnecessary re-renders.
