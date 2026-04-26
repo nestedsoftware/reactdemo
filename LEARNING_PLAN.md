@@ -82,13 +82,20 @@ SVG icon library. Trivial to add at any point.
 Type-safe component variant patterns — e.g. a Button with `variant="primary"` vs
 `variant="destructive"`. Natural last step once Tailwind and Radix are working together.
 
+### 11. `shadcn/ui`
+Pre-built component library that combines Radix UI + Tailwind + CVA + `cn()` into
+ready-to-use components (dialogs, dropdowns, buttons, etc.). Add after the individual
+pieces are understood — shadcn/ui will then make complete sense rather than being a
+black box. Components are copied into your codebase (not installed as a package), so
+you own the code and can customise freely.
+
 ---
 
 ## Round 5 — Testing
 
-### 11. `vitest` + `@testing-library/react`
+### 12. `vitest` + `@testing-library/react`
 Unit and component tests. Add once there are real components with meaningful logic
 to test.
 
-### 12. `@playwright/test`
+### 13. `@playwright/test`
 End-to-end browser tests. Leave until there are real pages and user flows to test.
