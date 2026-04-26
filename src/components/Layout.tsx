@@ -1,9 +1,6 @@
 import { Link, Outlet } from 'react-router'
-import { useQuizContext } from '../context/QuizContext'
 
 function Layout() {
-  const { completedIds } = useQuizContext()
-  console.log('Layout rendered', completedIds)
   return (
     <div>
       <nav>

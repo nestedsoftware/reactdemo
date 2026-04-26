@@ -880,3 +880,74 @@ Note: two log messages appear per keystroke because React `StrictMode` intention
 double-renders components in development to surface bugs. The doubling is expected.
 
 This is the problem Zustand solves next.
+
+---
+
+## Step 16 — Replace React Context with Zustand
+
+### Command
+```powershell
+npm install zustand
+```
+
+Like `clsx` and `tailwind-merge`, Zustand is a **runtime** dependency — it runs in
+the browser to manage state.
+
+### What it does
+Zustand is a minimal global state library. Instead of a provider wrapping the app,
+you define a store as a plain hook. Components subscribe to only the slices of state
+they need via a selector function — unrelated state changes do not trigger re-renders.
+
+### File added
+
+#### `src/store/QuizStore.ts`
+```ts
+import { create } from 'zustand'
+
+type QuizStore = {
+  completedIds: string[]
+  searchQuery: string
+  toggleCompleted: (id: string) => void
+  setSearchQuery: (query: string) => void
+}
+
+export const useQuizStore = create<QuizStore>((set) => ({
+  completedIds: [],
+  searchQuery: '',
+  toggleCompleted: (id) =>
+    set((state) => ({
+      completedIds: state.completedIds.includes(id)
+        ? state.completedIds.filter((x) => x !== id)
+        : [...state.completedIds, id],
+    })),
+  setSearchQuery: (query) => set({ searchQuery: query }),
+}))
+```
+
+`create<QuizStore>((set) => ...)` — the `set` function updates state. For updates that
+depend on previous state (like `toggleCompleted`), a function is passed to `set` —
+the same safe pattern as React's `useState` functional update form.
+
+### How components subscribe
+Each component calls `useQuizStore` with a **selector** — a function that picks the
+specific slice it needs:
+```ts
+const completedIds = useQuizStore((state) => state.completedIds)
+const toggleCompleted = useQuizStore((state) => state.toggleCompleted)
+```
+The component only re-renders when the selected value changes. A component selecting
+`completedIds` will not re-render when `searchQuery` changes.
+
+### Files modified
+- `src/pages/QuizDetailPage.tsx` — replaced `useQuizContext` with `useQuizStore`
+- `src/pages/QuizListPage.tsx` — replaced `useQuizContext` with `useQuizStore`
+- `src/App.tsx` — removed `QuizProvider` wrapper (Zustand needs no provider)
+- `src/components/Layout.tsx` — removed `useQuizStore` and `console.log` (no longer needed)
+
+### Files deleted
+- `src/context/QuizContext.tsx` — replaced entirely by the Zustand store
+
+### Result
+Typing in the search box no longer triggers any re-renders in `Layout` — confirmed by
+the absence of console output. Toggling completed still works correctly and state
+survives navigation.

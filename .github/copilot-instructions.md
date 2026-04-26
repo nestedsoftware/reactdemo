@@ -24,9 +24,10 @@ See `LEARNING_PLAN.md` for the planned sequence of libraries to add.
 - `tailwind-merge` — reliable class overrides in `Button` component via `twMerge`
 
 - `cn()` helper in `src/lib/cn.ts` — combines `clsx` + `tailwind-merge`; used everywhere instead of either library directly
-- React Context (`src/context/QuizContext.tsx`) — shared completed state that survives navigation; `QuizProvider` in `App.tsx`, `useQuizContext` in consuming components; `searchQuery` added to demonstrate re-render problem; `Layout` has a `console.log` to make unnecessary re-renders visible
+- React Context — used temporarily to demonstrate the re-render problem; since replaced by Zustand
+- Zustand (`src/store/QuizStore.ts`) — global store for `completedIds` and `searchQuery`; components subscribe via selectors to avoid unnecessary re-renders
 
-**Next step:** Round 2 — Zustand (replace React Context with global state store)
+**Next step:** Round 2 — `@tanstack/react-query` (server state management)
 
 ## Key Conventions
 - Formatter: Prettier (`.prettierrc` at project root) — no semicolons, single quotes, 2-space indent

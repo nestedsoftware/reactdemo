@@ -1,10 +1,12 @@
-import { useQuizContext } from '../context/QuizContext'
+import { useQuizStore } from '../store/QuizStore'
 import { Link, useParams } from 'react-router'
 import { quizzes } from '../data/quizzes'
 
 function QuizDetailPage() {
   const { id } = useParams()
-  const { completedIds, toggleCompleted } = useQuizContext()
+  const completedIds = useQuizStore((state) => state.completedIds)
+  const toggleCompleted = useQuizStore((state) => state.toggleCompleted)
+
   const completed = completedIds.includes(id!)
 
   const quiz = quizzes.find((q) => q.id === id)

@@ -4,10 +4,11 @@ import Button from '../components/Button'
 
 import { quizzes } from '../data/quizzes'
 
-import { useQuizContext } from '../context/QuizContext'
+import { useQuizStore } from '../store/QuizStore'
 
 function QuizListPage() {
-  const { searchQuery, setSearchQuery } = useQuizContext()
+  const searchQuery = useQuizStore((state) => state.searchQuery)
+  const setSearchQuery = useQuizStore((state) => state.setSearchQuery)
   return (
     <div>
       <h1>Quizzes</h1>
