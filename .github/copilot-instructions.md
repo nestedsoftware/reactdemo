@@ -26,8 +26,10 @@ See `LEARNING_PLAN.md` for the planned sequence of libraries to add.
 - `cn()` helper in `src/lib/cn.ts` — combines `clsx` + `tailwind-merge`; used everywhere instead of either library directly
 - React Context — used temporarily to demonstrate the re-render problem; since replaced by Zustand
 - Zustand (`src/store/QuizStore.ts`) — global store for `completedIds` and `searchQuery`; components subscribe via selectors to avoid unnecessary re-renders
+- MSW (`src/mocks/`) — intercepts fetch requests in dev; handlers for `GET /api/quizzes` and `GET /api/quizzes/:id`; started in `main.tsx` only in dev
+- `@tanstack/react-query` — fetches quiz list and quiz detail from mock API; `QueryClientProvider` in `App.tsx`; `useQuery` in `QuizListPage` and `QuizDetailPage`
 
-**Next step:** Round 2 — `@tanstack/react-query` (server state management)
+**Next step:** Round 3 — `zod` (schema validation)
 
 ## Key Conventions
 - Formatter: Prettier (`.prettierrc` at project root) — no semicolons, single quotes, 2-space indent

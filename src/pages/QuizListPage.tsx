@@ -2,13 +2,31 @@ import { Link } from 'react-router'
 import { cn } from '../lib/cn'
 import Button from '../components/Button'
 
-import { quizzes } from '../data/quizzes'
-
 import { useQuizStore } from '../store/QuizStore'
+
+import { useQuery } from '@tanstack/react-query'
+import { type Quiz } from '../data/quizzes'
 
 function QuizListPage() {
   const searchQuery = useQuizStore((state) => state.searchQuery)
   const setSearchQuery = useQuizStore((state) => state.setSearchQuery)
+
+  const {
+    data: quizzes = [],
+    isLoading,
+    isError,
+  } = useQuery<Quiz[]>({
+    queryKey: ['quizzes'],
+    queryFn: () => fetch('/api/quizzes').then((res) => res.json()),
+  })
+
+  if (isLoading) {
+    return <p>Loading...</p>
+  }
+
+  if (isError) {
+    return <p>Error loading quiz.</p>
+  }
 
   const filteredQuizzes = quizzes.filter((quiz) =>
     quiz.name.toLowerCase().includes(searchQuery.toLowerCase())

@@ -344,6 +344,14 @@ A `type` in TypeScript is a compile-time shape definition — completely erased 
 runtime, generates no JavaScript output. Used here (rather than a `class`) because
 the data is plain objects with no methods or constructor logic.
 
+When importing a `type` in another file, you can use the `type` keyword explicitly:
+```ts
+import { type Quiz } from '../data/quizzes'
+```
+This signals clearly that the import has no runtime presence and allows bundlers to
+tree-shake it without analysing whether it is a value or a type. Both forms work, but
+`import { type Quiz }` is the more explicit and idiomatic choice.
+
 ### `src/pages/QuizListPage.tsx` — list page
 
 Key concepts:
@@ -992,3 +1000,172 @@ The component only re-renders when the selected value changes. A component selec
 Typing in the search box no longer triggers any re-renders in `Layout` — confirmed by
 the absence of console output. Toggling completed still works correctly and state
 survives navigation.
+
+---
+
+## Step 17 — Add MSW (Mock Service Worker)
+
+Before adding React Query, we set up MSW to intercept fetch requests in the browser
+so we can simulate a real API without a backend server.
+
+### Command
+```powershell
+npm install --save-dev msw
+npx msw init public/ --save
+```
+
+MSW is a **dev dependency** — it only runs in development. The `init` command creates
+`public/mockServiceWorker.js`, a service worker the browser uses to intercept requests.
+
+### How MSW works
+MSW registers a service worker that sits between your app and the network. When your
+code calls `fetch('/api/quizzes')`, the service worker intercepts it and returns the
+mock response — no real network request is made. When you switch to a real backend,
+you just remove MSW and the fetch calls stay exactly the same.
+
+### Files added
+
+#### `src/mocks/handlers.ts` — mock API endpoints
+```ts
+import { http, HttpResponse } from 'msw'
+import { quizzes } from '../data/quizzes'
+
+export const handlers = [
+  http.get('/api/quizzes', () => {
+    return HttpResponse.json(quizzes)
+  }),
+  http.get('/api/quizzes/:id', ({ params }) => {
+    const quiz = quizzes.find((q) => q.id === params.id)
+    if (!quiz) return new HttpResponse(null, { status: 404 })
+    return HttpResponse.json(quiz)
+  }),
+]
+```
+
+#### `src/mocks/browser.ts` — service worker setup
+```ts
+import { setupWorker } from 'msw/browser'
+import { handlers } from './handlers'
+
+export const worker = setupWorker(...handlers)
+```
+
+#### `src/main.tsx` — start the worker before rendering
+```ts
+async function prepare() {
+  if (import.meta.env.DEV) {
+    const { worker } = await import('./mocks/browser')
+    await worker.start({ onUnhandledRequest: 'bypass' })
+  }
+}
+
+prepare().then(() => {
+  createRoot(document.getElementById('root')!).render(...)
+})
+```
+
+`import.meta.env.DEV` ensures MSW never runs in production. The dynamic `import()`
+inside the `if` block means the MSW code is never included in the production bundle.
+`onUnhandledRequest: 'bypass'` lets unmatched requests (e.g. Vite HMR) pass through.
+
+---
+
+## Step 18 — Add @tanstack/react-query
+
+### Command
+```powershell
+npm install @tanstack/react-query
+```
+
+React Query is a **runtime** dependency — it manages server state in the browser.
+
+### Client state vs server state
+| | Client state | Server state |
+|---|---|---|
+| Examples | `completedIds`, `searchQuery` | quiz list, quiz detail |
+| Lives in | Zustand store | React Query cache |
+| Source of truth | the browser | the server/API |
+| Resets on refresh | yes (unless persisted) | re-fetched automatically |
+
+`completedIds` is intentionally client-only for this project — in a real app it would
+be persisted to a backend and fetched with React Query.
+
+### Files modified
+
+#### `src/App.tsx` — added QueryClientProvider
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
+
+<QueryClientProvider client={queryClient}>
+  <BrowserRouter>...</BrowserRouter>
+</QueryClientProvider>
+```
+
+Unlike Zustand, React Query requires a provider — it holds the shared cache.
+`QueryClient` is created outside the component so it's not recreated on re-renders.
+
+**Why Zustand needs no provider but React Query does:**
+
+Zustand stores state in a plain JavaScript module-level closure — outside React
+entirely. Every file that imports `useQuizStore` gets the same instance automatically,
+because JavaScript module imports are global. No provider needed.
+
+React Query's cache lives inside a `QueryClient` object that you create yourself. The
+`QueryClientProvider` is how you inject that specific instance into the component tree.
+Without it, each component would create its own isolated cache with no sharing.
+
+The difference comes down to design intent:
+
+- **Zustand** is designed for simplicity — the store is a singleton by design. There
+  is one store, one instance, always the same object. This is fine for client state
+  because there's only ever one source of truth in your app. The tradeoff is you can't
+  have multiple independent instances of the same store — but for client state you
+  never need to.
+
+- **React Query** is designed for flexibility — you might want multiple `QueryClient`
+  instances with different cache configurations. For example: one per test so tests
+  don't share cached data, or one for the main app and one for an embedded widget.
+  Making you create the `QueryClient` yourself also keeps cache configuration
+  (stale time, retry logic, etc.) explicit and visible in your code.
+
+#### `src/pages/QuizListPage.tsx` — fetch quizzes from API
+```tsx
+
+const { data: quizzes = [], isLoading, isError } = useQuery<Quiz[]>({
+  queryKey: ['quizzes'],
+  queryFn: () => fetch('/api/quizzes').then((res) => res.json()),
+})
+
+if (isLoading) return <p>Loading...</p>
+if (isError) return <p>Something went wrong.</p>
+```
+
+#### `src/pages/QuizDetailPage.tsx` — fetch single quiz from API
+```tsx
+const { data: quiz, isLoading, isError } = useQuery<Quiz>({
+  queryKey: ['quiz', id],
+  queryFn: () => fetch(`/api/quizzes/${id}`).then((res) => res.json()),
+})
+```
+
+The backticks define a **template literal** — a string that embeds expressions via
+`${}`. Here `${id}` inserts the current quiz id at runtime, producing URLs like
+`/api/quizzes/1`. The alternative with concatenation would be `'/api/quizzes/' + id`,
+but template literals are cleaner and more readable.
+
+```tsx
+if (isLoading) return <p>Loading...</p>
+if (isError || !quiz) return <p>Quiz not found.</p>
+```
+
+The `queryKey` includes `id` so each quiz gets its own cache entry. React Query
+re-fetches automatically if the key changes (i.e. navigating to a different quiz).
+
+### Key concepts
+- **`queryKey`** — a unique identifier for this query; used as the cache key
+- **`queryFn`** — the function that fetches the data; must return a promise
+- **`isLoading`** — true while the first fetch is in flight
+- **`isError`** — true if the fetch threw or returned an error
+- **`data`** — the fetched value; `undefined` until the first successful fetch
