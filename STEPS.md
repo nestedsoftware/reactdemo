@@ -881,6 +881,28 @@ double-renders components in development to surface bugs. The doubling is expect
 
 This is the problem Zustand solves next.
 
+---
+
+## Step 16b — Filter quizzes using Zustand searchQuery
+
+A small addition to make the search input functional before moving on to React Query.
+
+### File modified
+
+#### `src/pages/QuizListPage.tsx`
+```tsx
+const filteredQuizzes = quizzes.filter((quiz) =>
+  quiz.name.toLowerCase().includes(searchQuery.toLowerCase())
+)
+
+// use filteredQuizzes in .map() instead of quizzes
+{filteredQuizzes.map((quiz) => ( ... ))}
+```
+
+The filter reads `searchQuery` from Zustand and derives the displayed list from it.
+Because `filteredQuizzes` is derived inside the component, it recomputes on every
+render triggered by `searchQuery` changing — no extra state needed.
+
 ### Can memoization fix the React Context re-render problem?
 Yes, but at the cost of significant complexity. Two common approaches:
 

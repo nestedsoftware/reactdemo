@@ -9,6 +9,11 @@ import { useQuizStore } from '../store/QuizStore'
 function QuizListPage() {
   const searchQuery = useQuizStore((state) => state.searchQuery)
   const setSearchQuery = useQuizStore((state) => state.setSearchQuery)
+
+  const filteredQuizzes = quizzes.filter((quiz) =>
+    quiz.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div>
       <h1>Quizzes</h1>
@@ -17,8 +22,9 @@ function QuizListPage() {
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search quizzes..."
       />
+
       <ul>
-        {quizzes.map((quiz) => (
+        {filteredQuizzes.map((quiz) => (
           <li
             key={quiz.id}
             className={cn(
